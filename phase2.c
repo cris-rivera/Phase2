@@ -5,7 +5,7 @@
    Computer Science 452
 
    ------------------------------------------------------------------------ */
-
+#include<stdlib.h>
 #include <phase1.h>
 #include <phase2.h>
 #include <usloss.h>
@@ -15,6 +15,9 @@
 /* ------------------------- Prototypes ----------------------------------- */
 int start1 (char *);
 extern int start2 (char *);
+//void enableInterrupts();
+//void disableInterrupts();
+//int check_io();
 
 
 /* -------------------------- Globals ------------------------------------- */
@@ -40,16 +43,18 @@ int start1(char *arg)
    if (DEBUG2 && debugflag2)
       console("start1(): at beginning\n");
 
-   check_kernel_mode("start1");
+   int kid_pid = 0;
+   int status = 0;
+   //check_kernel_mode("start1");
 
    /* Disable interrupts */
-   disableInterrupts();
+   //disableInterrupts();
 
    /* Initialize the mail box table, slots, & other data structures.
     * Initialize int_vec and sys_vec, allocate mailboxes for interrupt
     * handlers.  Etc... */
 
-   enableInterrupts();
+   //enableInterrupts();
 
    /* Create a process for start2, then block on a join until start2 quits */
    if (DEBUG2 && debugflag2)
@@ -61,6 +66,10 @@ int start1(char *arg)
 
    return 0;
 } /* start1 */
+int check_io()
+{
+  return 0;
+}
 
 
 /* ------------------------------------------------------------------------
