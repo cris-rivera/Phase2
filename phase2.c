@@ -15,9 +15,10 @@
 /* ------------------------- Prototypes ----------------------------------- */
 int start1 (char *);
 extern int start2 (char *);
-//void enableInterrupts();
-//void disableInterrupts();
-//int check_io();
+void check_kernel_mode(char *str);
+void enableInterrupts();
+void disableInterrupts();
+int check_io();
 
 
 /* -------------------------- Globals ------------------------------------- */
@@ -43,18 +44,18 @@ int start1(char *arg)
    if (DEBUG2 && debugflag2)
       console("start1(): at beginning\n");
 
+   check_kernel_mode("start1\n");
    int kid_pid = 0;
    int status = 0;
-   //check_kernel_mode("start1");
 
    /* Disable interrupts */
-   //disableInterrupts();
+   disableInterrupts();
 
    /* Initialize the mail box table, slots, & other data structures.
     * Initialize int_vec and sys_vec, allocate mailboxes for interrupt
     * handlers.  Etc... */
 
-   //enableInterrupts();
+   enableInterrupts();
 
    /* Create a process for start2, then block on a join until start2 quits */
    if (DEBUG2 && debugflag2)
@@ -66,11 +67,63 @@ int start1(char *arg)
 
    return 0;
 } /* start1 */
+
+/* ------------------------------------------------------------------------
+    Name - check_io
+    Purpose - dummy function which represents checking IOs.
+    Parameters - none
+    Returns - one, returns 0
+    Side Effects - none
+    ----------------------------------------------------------------------- */
 int check_io()
 {
   return 0;
-}
+}/* check_io */
 
+/* ------------------------------------------------------------------------
+     Name - enableInterrupts
+     Purpose - enables interrupts so interrupts.
+     Parameters - none
+     Returns - none
+     Side Effects - PSR value is altered
+     ----------------------------------------------------------------------- */
+void enableInterrupts()
+{
+  //check_kernel_mode("enableInterrupts");
+  psr_set( psr_get() | PSR_CURRENT_INT );
+}/* enableInterrupts */
+
+/* ------------------------------------------------------------------------
+     Name - disableInterrupts
+     Purpose - disables interrupts so interrupts do not stop flow of execution.
+     Parameters - none
+     Returns - none
+     Side Effects - PSR value is altered.
+     ----------------------------------------------------------------------- */
+void disableInterrupts()
+{
+  //check_kernel_mode("enableInterrupts");
+  psr_set( psr_get() & ~PSR_CURRENT_INT );
+}/* disableInterrupts */
+
+/* ------------------------------------------------------------------------
+     Name - check_kernel_mode
+     Purpose - Checks if calling process is in kernel mode. Halts simulation 
+               if calling process is not in kernel mode.
+     Parameters - one, char *str which is a pointer to a string holding which
+                  function called check_kernel_mode so it may be displayed in
+                  the error message, if necessary.
+     Returns - none
+     Side Effects - halts USLOSS if calling process is not in kernel mode.
+     ----------------------------------------------------------------------- */
+void check_kernel_mode(char *str)
+{
+  if((PSR_CURRENT_MODE & psr_get()) == 0)
+  {
+    console("%s: not in kernel mode\n", str);
+    halt(1);
+  }
+}/*check_kernel_mode */
 
 /* ------------------------------------------------------------------------
    Name - MboxCreate
