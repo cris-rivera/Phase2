@@ -25,8 +25,13 @@ int check_io();
 
 int debugflag2 = 0;
 
+unsigned int next_mbox_id = 0;
+
 /* the mail boxes */
 mail_box MailBoxTable[MAXMBOX];
+
+/* lists */
+mbox_proc_ptr BlockedList;
 
 
 /* -------------------------- Functions ----------------------------------- */
@@ -45,8 +50,6 @@ int start1(char *arg)
       console("start1(): at beginning\n");
 
    check_kernel_mode("start1\n");
-   int kid_pid = 0;
-   int status = 0;
 
    /* Disable interrupts */
    disableInterrupts();
@@ -54,6 +57,16 @@ int start1(char *arg)
    /* Initialize the mail box table, slots, & other data structures.
     * Initialize int_vec and sys_vec, allocate mailboxes for interrupt
     * handlers.  Etc... */
+   int kid_pid = 0;
+   int status = 0;
+   int i;
+   BlockedList = NULL;
+
+   for(i = 0; i < MAXPROC; i++)
+   {
+     MailBoxTable[i].mbox_id = -1;
+     MailBoxTable[i].next_mbox = NULL;
+   }
 
    enableInterrupts();
 
@@ -89,7 +102,7 @@ int check_io()
      ----------------------------------------------------------------------- */
 void enableInterrupts()
 {
-  //check_kernel_mode("enableInterrupts");
+  check_kernel_mode("enableInterrupts");
   psr_set( psr_get() | PSR_CURRENT_INT );
 }/* enableInterrupts */
 
@@ -102,7 +115,7 @@ void enableInterrupts()
      ----------------------------------------------------------------------- */
 void disableInterrupts()
 {
-  //check_kernel_mode("enableInterrupts");
+  check_kernel_mode("enableInterrupts");
   psr_set( psr_get() & ~PSR_CURRENT_INT );
 }/* disableInterrupts */
 
@@ -136,6 +149,30 @@ void check_kernel_mode(char *str)
    ----------------------------------------------------------------------- */
 int MboxCreate(int slots, int slot_size)
 {
+  check_kernel_mode("MboxCreate");
+
+  int table_pos = next_mbox_id % MAXPROC;
+  int mbox_id_count = 0;
+
+  if(slot_size < 0 || slot_size > MAX_MESSAGE)
+    return -1;
+
+  while(mbox_id_count < MAXPROC && MailBoxTable[table_pos].mbox_id != -1)
+  {
+    next_mbox_id++;
+    table_pos = next_mbox_id % MAXPROC;
+    mbox_id_count++;
+  }
+
+  if(mbox_id_count >= MAXPROC)
+    return -1;
+
+  MailBoxTable[table_pos].mbox_id = next_mbox_id++;
+  MailBoxTable[table_pos].num_slots = slots;
+  MailBoxTable[table_pos].slot_size = slot_size;
+
+  return MailBoxTable[table_pos].mbox_id;
+
 } /* MboxCreate */
 
 
@@ -149,6 +186,7 @@ int MboxCreate(int slots, int slot_size)
    ----------------------------------------------------------------------- */
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
+  check_kernel_mode("MboxSend");
 } /* MboxSend */
 
 
@@ -163,4 +201,5 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
    ----------------------------------------------------------------------- */
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
+  check_kernel_mode("MboxReceive");
 } /* MboxReceive */
