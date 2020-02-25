@@ -4,6 +4,9 @@
    University of Arizona South
    Computer Science 452
 
+   Author: Cristian Rivera
+   Group: Cristian Rivera
+
    ------------------------------------------------------------------------ */
 #include<stdlib.h>
 #include <phase1.h>
@@ -24,8 +27,10 @@ int check_io();
 /* -------------------------- Globals ------------------------------------- */
 
 int debugflag2 = 0;
-
 unsigned int next_mbox_id = 0;
+
+/* Process table for Phase 2 */
+mbox_proc MboxProcTable[MAXPROC];
 
 /* the mail boxes */
 mail_box MailBoxTable[MAXMBOX];
@@ -62,10 +67,21 @@ int start1(char *arg)
    int i;
    BlockedList = NULL;
 
+   /* Initializes the Phase 2 Process Table */
    for(i = 0; i < MAXPROC; i++)
    {
-     MailBoxTable[i].mbox_id = -1;
+     MboxProcTable[i].pid = INIT_VAL;
+     MboxProcTable[i].next_mbox_ptr = NULL;
+   }
+
+   /* Initializes the MailBox Array */
+   for(i = 0; i < MAXMBOX; i++)
+   {
+     MailBoxTable[i].mbox_id = INIT_VAL;
      MailBoxTable[i].next_mbox = NULL;
+     MailBoxTable[i].m_slots = NULL;
+     MailBoxTable[i].num_slots = 0;
+     MailBoxTable[i].slot_size = 0;
    }
 
    enableInterrupts();
@@ -157,7 +173,7 @@ int MboxCreate(int slots, int slot_size)
   if(slot_size < 0 || slot_size > MAX_MESSAGE)
     return -1;
 
-  while(mbox_id_count < MAXPROC && MailBoxTable[table_pos].mbox_id != -1)
+  while(mbox_id_count < MAXMBOX && MailBoxTable[table_pos].mbox_id != INIT_VAL)
   {
     next_mbox_id++;
     table_pos = next_mbox_id % MAXPROC;
@@ -187,6 +203,59 @@ int MboxCreate(int slots, int slot_size)
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
   check_kernel_mode("MboxSend");
+  int i;
+  int table_pos = INIT_VAL;
+  slot_ptr walker = NULL;
+
+  /* invalid mbox_id value */
+  if(mbox_id == -1)
+    return -1;
+
+  for(i = 0; i < MAXMBOX; i++)
+  {
+    if(mbox_id == MailBoxTable[i].mbox_id)
+      table_pos = i;
+  }
+
+  if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size <= 0)
+    return -1;
+
+  if(MailBoxTable[table_pos].m_slots == NULL)
+  {
+    mail_slot slot; //figure out how to allocate a slot
+    MailBoxTable[table_pos].m_slots = &slot;
+    MailBoxTable[table_pos].m_slots->status = FULL;
+    MailBoxTable[table_pos].m_slots->next_slot = NULL;
+  }
+  else
+  {
+    walker = MailBoxTable[table_pos].m_slots;
+
+    for(i = 0; i < MailBoxTable[table_pos].num_slots - 1; i++)
+    {
+      if(walker->next_slot == NULL)
+      {
+        mail_slot slot; //figure out how to allocate a slot
+        walker->next_slot = &slot;
+        walker->status = FULL;
+        //copy message
+        walker->next_slot = NULL;
+        i = MailBoxTable[table_pos].num_slots;
+      }
+      else if(walker->status == EMPTY)
+      {
+        walker->status = FULL;
+        //copy message
+        i = MailBoxTable[table_pos].num_slots;
+      }
+      
+      walker = walker->next_slot;
+    }
+
+    if(i == MailBoxTable[table_pos].num_slots - 1)
+      block_me(11);
+
+  return 0;
 } /* MboxSend */
 
 

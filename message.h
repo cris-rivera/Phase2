@@ -1,8 +1,15 @@
 #define DEBUG2 1
+#define INIT_VAL -1
 
+typedef struct MboxProc mbox_proc;
 typedef struct mail_slot *slot_ptr;
 typedef struct mailbox mail_box;
 typedef struct mbox_proc *mbox_proc_ptr;
+
+struct MboxProc {
+  short            pid;
+  mbox_proc_ptr    next_mbox_ptr; //used for BlockedList, I think.
+};
 
 struct mailbox {
    int              mbox_id;
@@ -14,11 +21,15 @@ struct mailbox {
 };
 
 struct mail_slot {
-   //int       mbox_id;
-   int       slot_id;
    int       status;
+   slot_ptr  next_slot;
    /* other items as needed... */
 };
+
+enum {
+  FULL,
+  EMPTY
+}SLOT_STATUS;
 
 struct psr_bits {
     unsigned int cur_mode:1;
