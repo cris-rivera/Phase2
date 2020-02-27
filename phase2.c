@@ -12,6 +12,7 @@
 #include <phase1.h>
 #include <phase2.h>
 #include <usloss.h>
+#include <string.h>
 
 #include "message.h"
 
@@ -205,6 +206,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   check_kernel_mode("MboxSend");
   int i;
   int table_pos = INIT_VAL;
+  m_ptr current = NULL;
   slot_ptr walker = NULL;
 
   /* invalid mbox_id value */
@@ -220,40 +222,50 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size <= 0)
     return -1;
 
-  if(MailBoxTable[table_pos].m_slots == NULL)
+  current = &MailBoxTable[table_pos];
+  char m_arr[current->slot_size];
+
+  if(current->m_slots == NULL)
   {
-    mail_slot slot; //figure out how to allocate a slot
-    MailBoxTable[table_pos].m_slots = &slot;
-    MailBoxTable[table_pos].m_slots->status = FULL;
-    MailBoxTable[table_pos].m_slots->next_slot = NULL;
+    new_slot slot;
+    current->m_slots = &slot;
+    current->m_slots->message = m_arr;
+    memcpy(current->m_slots->message, msg_ptr, msg_size);
+    current->m_slots->status = FULL;
+    current->m_slots->next_slot = NULL;
   }
   else
   {
     walker = MailBoxTable[table_pos].m_slots;
 
-    for(i = 0; i < MailBoxTable[table_pos].num_slots - 1; i++)
+    for(i = 0; i < current->num_slots - 1; i++)
     {
       if(walker->next_slot == NULL)
       {
-        mail_slot slot; //figure out how to allocate a slot
+        new_slot slot;
         walker->next_slot = &slot;
+        walker = walker->next_slot;
+        walker->message = m_arr;
+        memcpy(walker->message, msg_ptr, msg_size);
         walker->status = FULL;
-        //copy message
         walker->next_slot = NULL;
-        i = MailBoxTable[table_pos].num_slots;
+        i = current->num_slots;
       }
       else if(walker->status == EMPTY)
       {
         walker->status = FULL;
-        //copy message
-        i = MailBoxTable[table_pos].num_slots;
+        walker->message = m_arr;
+        memcpy(walker->message, msg_ptr, msg_size);
+        i = current->num_slots;
       }
       
       walker = walker->next_slot;
     }
 
-    if(i == MailBoxTable[table_pos].num_slots - 1)
+    if(i == current->num_slots - 1)//may cause a buy since loop will not start at 1.
       block_me(11);
+
+  }
 
   return 0;
 } /* MboxSend */

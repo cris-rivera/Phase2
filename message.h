@@ -5,6 +5,8 @@ typedef struct MboxProc mbox_proc;
 typedef struct mail_slot *slot_ptr;
 typedef struct mailbox mail_box;
 typedef struct mbox_proc *mbox_proc_ptr;
+typedef struct mail_slot new_slot;
+typedef struct mailbox *m_ptr; //pointer to a mailbox
 
 struct MboxProc {
   short            pid;
@@ -23,6 +25,7 @@ struct mailbox {
 struct mail_slot {
    int       status;
    slot_ptr  next_slot;
+   char      *message;
    /* other items as needed... */
 };
 
