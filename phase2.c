@@ -23,6 +23,7 @@ void check_kernel_mode(char *str);
 void enableInterrupts();
 void disableInterrupts();
 int check_io();
+void BlkList_Insert(int pid);
 
 
 /* -------------------------- Globals ------------------------------------- */
@@ -220,6 +221,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   m_ptr current = NULL;
   slot_ptr walker = NULL;
   slot_ptr new_slot = NULL;
+  mbox_proc_ptr proc_ptr = NULL;
 
   /* invalid mbox_id value */
   if(mbox_id == -1)
@@ -250,6 +252,14 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     current->m_slots->m_size = msg_size;
     current->m_slots->status = FULL;
     current->m_slots->next_slot = NULL;
+
+    if(BlockedList != NULL)
+    {
+      proc_ptr = BlockedList;
+      BlockedList = BlockedList->next_mbox_ptr;
+      proc_ptr->status = READY;
+      unblock_proc(proc_ptr->pid);
+    }
   }
   else
   {
@@ -271,7 +281,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
       walker = walker->next_slot;
     }
 
-    if(i == current->num_slots - 1)//may cause a buy since loop will not start at 1.
+    if(i == current->num_slots - 1)//may cause a bug since loop will not start at 1.
       block_me(11);
 
   }
@@ -297,6 +307,8 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   int message_size = 0;
   m_ptr mail_box = NULL;
 
+
+
   for(i = 0; i < MAXMBOX; i++)
   {
      if(mbox_id == MailBoxTable[i].mbox_id)
@@ -307,9 +319,53 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
   
   mail_box = &MailBoxTable[table_pos];
-  memcpy(msg_ptr, mail_box->m_slots->message, msg_size);
 
+  while(mail_box->m_slots == NULL)
+  {
+    for(i = 0; i < MAXPROC; i++)
+    {
+      if(MboxProcTable[i].pid == INIT_VAL)
+      {
+        table_pos = i;
+        i = MAXPROC;
+      }
+    }
+
+    MboxProcTable[table_pos].pid = getpid();
+    MboxProcTable[table_pos].status = BLOCKED;
+    BlkList_Insert(MboxProcTable[table_pos].pid);
+    block_me(11);
+  }
+
+
+  memcpy(msg_ptr, mail_box->m_slots->message, msg_size);
   message_size = mail_box->m_slots->m_size;
 
   return message_size;
 } /* MboxReceive */
+
+void BlkList_Insert(int pid)
+{
+  int i;
+  mbox_proc_ptr proc_ptr = NULL;
+  mbox_proc_ptr walker = NULL;
+
+  for(i = 0; i < MAXPROC; i++)
+  {
+    if(MboxProcTable[i].pid == pid)
+    {
+      proc_ptr = &MboxProcTable[i];
+      i = MAXPROC;
+    }
+  }
+
+  if(BlockedList == NULL)
+    BlockedList = proc_ptr;
+  else
+  {
+    walker = BlockedList;
+    while(walker->next_mbox_ptr != NULL)
+      walker = walker->next_mbox_ptr;
+    walker->next_mbox_ptr = proc_ptr;
+  }
+}

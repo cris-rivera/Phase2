@@ -10,6 +10,7 @@ typedef struct mailbox *m_ptr; //pointer to a mailbox
 
 struct mbox_proc {
   short            pid;
+  int              status;
   mbox_proc_ptr    next_mbox_ptr; //used for BlockedList, I think.
   char             *message; //Pointer which will hold a message from MboxReceive.
 };
@@ -35,6 +36,12 @@ enum {
   FULL,
   EMPTY
 }SLOT_STATUS;
+
+enum {
+  BLOCKED,
+  READY,
+  RUNNING
+}PROC_STATUS;
 
 struct psr_bits {
     unsigned int cur_mode:1;
