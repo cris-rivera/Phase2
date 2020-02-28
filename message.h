@@ -1,16 +1,17 @@
 #define DEBUG2 1
 #define INIT_VAL -1
 
-typedef struct MboxProc mbox_proc;
+typedef struct mbox_proc mbox_proc;
 typedef struct mail_slot *slot_ptr;
 typedef struct mailbox mail_box;
 typedef struct mbox_proc *mbox_proc_ptr;
 typedef struct mail_slot new_slot;
 typedef struct mailbox *m_ptr; //pointer to a mailbox
 
-struct MboxProc {
+struct mbox_proc {
   short            pid;
   mbox_proc_ptr    next_mbox_ptr; //used for BlockedList, I think.
+  char             *message; //Pointer which will hold a message from MboxReceive.
 };
 
 struct mailbox {
@@ -25,7 +26,8 @@ struct mailbox {
 struct mail_slot {
    int       status;
    slot_ptr  next_slot;
-   char      *message;
+   char      message[MAX_MESSAGE];
+   int       m_size; //size of the message copied
    /* other items as needed... */
 };
 

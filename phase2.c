@@ -36,6 +36,9 @@ mbox_proc MboxProcTable[MAXPROC];
 /* the mail boxes */
 mail_box MailBoxTable[MAXMBOX];
 
+/* the mail slots */
+new_slot MSlot_Table[MAXSLOTS];
+
 /* lists */
 mbox_proc_ptr BlockedList;
 
@@ -83,6 +86,14 @@ int start1(char *arg)
      MailBoxTable[i].m_slots = NULL;
      MailBoxTable[i].num_slots = 0;
      MailBoxTable[i].slot_size = 0;
+   }
+
+   /* Initializes the MailSlot Array. */
+   for(i = 0; i < MAXSLOTS; i++)
+   {
+     MSlot_Table[i].status = EMPTY;
+     MSlot_Table[i].next_slot = NULL;
+     memset(MSlot_Table[i].message, 0, sizeof(MSlot_Table[i].message));
    }
 
    enableInterrupts();
@@ -208,6 +219,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   int table_pos = INIT_VAL;
   m_ptr current = NULL;
   slot_ptr walker = NULL;
+  slot_ptr new_slot = NULL;
 
   /* invalid mbox_id value */
   if(mbox_id == -1)
@@ -223,14 +235,19 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
 
   current = &MailBoxTable[table_pos];
-  char m_arr[current->slot_size];
+
+  for(i = 0; i < MAXSLOTS; i++)
+  {
+    if(MSlot_Table[i].status == EMPTY)
+      new_slot = &MSlot_Table[i];
+  }
+      
 
   if(current->m_slots == NULL)
   {
-    new_slot slot;
-    current->m_slots = &slot;
-    current->m_slots->message = m_arr;
+    current->m_slots = new_slot;
     memcpy(current->m_slots->message, msg_ptr, msg_size);
+    current->m_slots->m_size = msg_size;
     current->m_slots->status = FULL;
     current->m_slots->next_slot = NULL;
   }
@@ -242,20 +259,12 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     {
       if(walker->next_slot == NULL)
       {
-        new_slot slot;
-        walker->next_slot = &slot;
+        walker->next_slot = new_slot;
         walker = walker->next_slot;
-        walker->message = m_arr;
         memcpy(walker->message, msg_ptr, msg_size);
+        walker->m_size = msg_size;
         walker->status = FULL;
         walker->next_slot = NULL;
-        i = current->num_slots;
-      }
-      else if(walker->status == EMPTY)
-      {
-        walker->status = FULL;
-        walker->message = m_arr;
-        memcpy(walker->message, msg_ptr, msg_size);
         i = current->num_slots;
       }
       
@@ -283,4 +292,24 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
   check_kernel_mode("MboxReceive");
+  int i;
+  int table_pos = INIT_VAL;
+  int message_size = 0;
+  m_ptr mail_box = NULL;
+
+  for(i = 0; i < MAXMBOX; i++)
+  {
+     if(mbox_id == MailBoxTable[i].mbox_id)
+       table_pos = i;
+  }
+
+  if(table_pos == INIT_VAL)
+    return -1;
+  
+  mail_box = &MailBoxTable[table_pos];
+  memcpy(msg_ptr, mail_box->m_slots->message, msg_size);
+
+  message_size = mail_box->m_slots->m_size;
+
+  return message_size;
 } /* MboxReceive */
