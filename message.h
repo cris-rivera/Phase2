@@ -33,8 +33,14 @@ struct mail_slot {
 };
 
 enum {
-  FULL,
-  EMPTY
+  CLOSED,
+  OPEN
+}MBOX_STATUS;
+
+enum {
+  FULL,   //slot is part of a mailbox and contains a message
+  OPEN_SLOT,   //slot is part of a mailbox and does not contain a message
+  EMPTY   //slot is not part of a mailbox
 }SLOT_STATUS;
 
 enum {

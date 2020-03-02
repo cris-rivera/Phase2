@@ -46,6 +46,7 @@ int XXp1(char *arg)
    for (i = 0; i <= 5; i++) {
       printf("XXp1(): sending message #%d to mailbox %d\n", i, mbox_id);
       sprintf(buffer, "hello there, #%d", i);
+      //console("%s\n\n", buffer);
       result = MboxSend(mbox_id, buffer, strlen(buffer)+1);
       printf("XXp1(): after send of message #%d, result = %d\n", i, result);
    }
