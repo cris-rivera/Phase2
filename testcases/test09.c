@@ -87,7 +87,7 @@ int XXp2(char *arg)
 
    sprintf(buffer, "hello from %s", arg);
    printf("%s(): sending message '%s' to mailbox %d, msg_size = %d\n",
-          arg, buffer, mbox_id, strlen(buffer)+1);
+          arg, buffer, mbox_id, (int)strlen(buffer)+1);
    result = MboxSend(mbox_id, buffer, strlen(buffer)+1);
    printf("%s(): after send of message '%s', result = %d\n",
           arg, buffer, result);
