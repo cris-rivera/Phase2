@@ -436,7 +436,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size)
       table_pos = i;
   }
 
-  if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size <= 0)
+  if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size < 0)
     return -1;
 
   current = &MailBoxTable[table_pos];
