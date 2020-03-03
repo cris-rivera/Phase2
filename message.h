@@ -10,9 +10,9 @@ typedef struct mailbox *m_ptr; //pointer to a mailbox
 
 struct mbox_proc {
   short            pid;
+  int              mbox_id; //to keep track of which mailbox caused the process  to block.
   int              status;
   mbox_proc_ptr    next_mbox_ptr; //used for BlockedList, I think.
-  char             *message; //Pointer which will hold a message from MboxReceive.
 };
 
 struct mailbox {
@@ -21,16 +21,24 @@ struct mailbox {
    slot_ptr         m_slots;      //pointer to list of mailbox slots
    int              num_slots;   //number of slots mailbox holds
    int              slot_size;  //size of each mailbox slot
+   int              status;     //to tell if the mailbox has been/is being released.
    /* other items as needed... */
 };
 
 struct mail_slot {
    int       status;
+   int       mbox_id;
    slot_ptr  next_slot;
    char      message[MAX_MESSAGE];
    int       m_size; //size of the message copied
    /* other items as needed... */
 };
+
+enum {
+  UNINIT,
+  INIT,
+  RELEASED
+}MBOX_RELEASE_STATUS;
 
 enum {
   CLOSED,
