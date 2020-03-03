@@ -24,6 +24,8 @@ void enableInterrupts();
 void disableInterrupts();
 int check_io();
 int MboxRelease(int mbox_id);
+int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size);
+int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size);
 int ProcTable_Insert(int pid);
 void BlkList_Remove();
 void BlkList_Insert(int pid);
@@ -412,6 +414,119 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   return 0;
 } /* MboxSend */
 
+int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size)
+{
+  //Checks if calling process is in kernel mode then creates and initializes
+  //temporary variables/pointers
+  check_kernel_mode("MboxSend");
+  int i;
+  int table_pos = INIT_VAL;
+  int counter = 0;
+  m_ptr current = NULL;
+  slot_ptr walker = NULL;
+  slot_ptr new_slot = NULL;
+
+  /* invalid mbox_id value */
+  if(mbox_id == -1)
+    return -1;
+
+  for(i = 0; i < MAXMBOX; i++)
+  {
+    if(mbox_id == MailBoxTable[i].mbox_id)
+      table_pos = i;
+  }
+
+  if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size <= 0)
+    return -1;
+
+  current = &MailBoxTable[table_pos];
+
+  /*
+   * Checks if mailbox is full. If mailbox slots are not full, selects next
+   * empty mail slot to place message passed by msg_ptr. If mailbox slots are
+   * full, blocks calling process until a free slot appears in the mailbox.
+   */
+  walker = current->m_slots;
+  counter = 0;
+
+  while(walker != NULL)
+  {
+    if(walker->status == OPEN)
+    {
+      new_slot = walker;
+      walker = NULL;
+    }
+    else
+    {
+      walker = walker->next_slot;
+      counter++;
+    }
+  }
+
+  if(counter == current->num_slots)
+    return -2;
+
+  /*
+   * Finds an empty entry in the mail slot table and sets it as the new slot of
+   * the current mailbox
+   */
+  if(new_slot == NULL)
+  {
+    for(i = 0; i < MAXSLOTS; i++)
+    {
+      if(MSlot_Table[i].status == EMPTY)
+      {
+        new_slot = &MSlot_Table[i];
+        i = MAXSLOTS;
+      }
+    }
+  }
+
+  if(new_slot == NULL)
+    return -2;
+  
+  /*
+   * Places message passed by msg_ptr into the next available empty mailslot.
+   */
+  if(current->m_slots == NULL)
+  {
+    current->m_slots = new_slot;
+    current->m_slots->mbox_id = mbox_id;
+    memcpy(current->m_slots->message, msg_ptr, msg_size);
+    current->m_slots->m_size = msg_size;
+    current->m_slots->status = FULL;
+    current->m_slots->next_slot = NULL;
+
+    if(BlockedList != NULL)
+      BlkList_Remove();
+
+  }
+  else
+  {
+    walker = MailBoxTable[table_pos].m_slots;
+
+    for(i = 0; i < current->num_slots; i++)
+    {
+      if(walker->next_slot == NULL)
+      {
+        walker->next_slot = new_slot;
+        walker = walker->next_slot;
+        walker->mbox_id = mbox_id;
+        memcpy(walker->message, msg_ptr, msg_size);
+        walker->m_size = msg_size;
+        walker->status = FULL;
+        walker->next_slot = NULL;
+        i = current->num_slots;
+      }
+      else
+        walker = walker->next_slot;
+    }
+  }
+  if(is_zapped())
+    return -3;
+  else
+    return 0;
+}
 
 /* ------------------------------------------------------------------------
    Name - MboxReceive
