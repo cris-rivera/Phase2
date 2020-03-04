@@ -74,7 +74,7 @@ int XXp2(char *arg)
       break;
    case 4:
       result = MboxSend(mbox_id, "Sixth message", 14);
-      console("sixth was sent\n");
+      //console("sixth was sent\n");
       break;
    default:
       printf("XXp2(): problem in switch!!!!\n");

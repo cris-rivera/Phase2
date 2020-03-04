@@ -327,7 +327,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
    * for the current mailbox. Also assigns this slot the counter value that
    * will correspond with the current process.
    */
-  console("send_count: %d\n", send_count);
+  //console("send_count: %d\n", send_count);
   for(i = 0; i < MAXSLOTS; i++)
   {
     if(MSlot_Table[i].status == EMPTY)
@@ -418,7 +418,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 
     if(BlockedList != NULL)
     {
-      console("unblock\n");
+      //console("unblock\n");
       BlkList_Remove();
     }
 
@@ -443,7 +443,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 
         if(BlockedList != NULL)
         {
-          console("unblock\n");
+          //console("unblock\n");
           BlkList_Remove();
         }
       }
@@ -604,8 +604,9 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   
   mail_box = &MailBoxTable[table_pos];
 
+  /*
   if(mail_box->m_slots != NULL)
-    console("not null\n");
+    console("not null\n");*/
 
   while(mail_box->m_slots == NULL)
   {
@@ -614,16 +615,23 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     MboxProcTable[table_pos].status = BLOCKED;
     MboxProcTable[table_pos].mbox_id = mbox_id;
     BlkList_Insert(MboxProcTable[table_pos].pid);
-    console("first block me\n");
+    //console("first block me\n");
     block_me(11);
 
     if(mail_box->status == RELEASED)
       return -3;
   }
 
+  current = mail_box->m_slots;
+  memcpy(msg_ptr, current->message, msg_size);
+  message_size = current->m_size;
+  current->status = EMPTY;
+  Slot_Remove(mail_box);
+
   /*
    * copies message from mail slot to msg_ptr
    */
+  /*
   current = mail_box->m_slots;
   walker = current;
 
@@ -632,9 +640,9 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     walker = mail_box->m_slots;
     for(i = 0; i < mail_box->num_slots; i++)
     {
-      if(walker != NULL && walker->m_count == recv_count)
+      if(walker != NULL)
       {
-        console("made it into if\n");
+        //console("made it into if\n");
         memcpy(msg_ptr, walker->message, msg_size);
         message_size = walker->m_size;
         walker->status = EMPTY;
@@ -661,7 +669,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
       console("count: %d\n", recv_count);
       block_me(11);
     }
-  }
+  }*/
 
   /*
    * empties mail slot and removes it from the mail box.
