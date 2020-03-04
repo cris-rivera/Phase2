@@ -83,7 +83,7 @@ int XXp2(char *arg)
 
    if ( strcmp( arg, "XXp2b" ) == 0 ) {
       printf("%s(): sending message '%s' to mailbox %d, msg_size = %d\n",
-             arg, buffer, mbox_id, strlen(buffer)+1);
+             arg, buffer, mbox_id, (int)strlen(buffer)+1);
       result = MboxSend(mbox_id, buffer, strlen(buffer)+1);
       printf("%s(): after send of message '%s', result = %d\n",
              arg, buffer, result);
@@ -92,7 +92,7 @@ int XXp2(char *arg)
    else {
       printf("%s(): conditionally sending message '%s' to mailbox %d, ",
              arg, buffer, mbox_id);
-      printf("msg_size = %d\n", strlen(buffer)+1);
+      printf("msg_size = %d\n", (int)strlen(buffer)+1);
       result = MboxCondSend(mbox_id, buffer, strlen(buffer)+1);
       printf("%s(): after conditional send of message '%s', result = %d\n",
              arg, buffer, result);
