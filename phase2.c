@@ -31,6 +31,7 @@ void Slot_Remove(m_ptr mailbox);
 void BlkList_Remove();
 void BlkList_Insert(int pid);
 void BlkList_Delete(int pid);
+void block_proc(int mbox_id);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -416,11 +417,12 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     current->m_slots->status = FULL;
     current->m_slots->next_slot = NULL;
 
+    /*
     if(BlockedList != NULL)
     {
       //console("unblock\n");
       BlkList_Remove();
-    }
+    }*/
 
   }
   else
@@ -441,17 +443,20 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
         walker->next_slot = NULL;
         i = current->num_slots;
 
+        /*
         if(BlockedList != NULL)
         {
           //console("unblock\n");
           BlkList_Remove();
-        }
+        }*/
       }
       else
         walker = walker->next_slot;
     }
   }
 
+  if(BlockedList != NULL)
+    BlkList_Remove();
   //enableInterrupts();
   return 0;
 } /* MboxSend */
@@ -627,6 +632,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   message_size = current->m_size;
   current->status = EMPTY;
   Slot_Remove(mail_box);
+  recv_count++;
 
   /*
    * copies message from mail slot to msg_ptr
@@ -696,10 +702,17 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   walker->next_slot = NULL;
   mail_box->m_slots = current;*/
 
-  if(BlockedList != NULL)
+  if(BlockedList != NULL && mail_box->m_slots == NULL)
   {
     //console("in remove...\n");
     BlkList_Remove();
+    //block_proc(mbox_id);
+
+  }
+  if(BlockedList != NULL)
+  {
+    BlkList_Remove();
+    //block_proc(mbox_id);
   }
 
   return message_size;
@@ -824,3 +837,15 @@ void BlkList_Delete(int pid)
      }
    }
 }/* BlkList_Delete */
+
+void block_proc(int mbox_id)
+{
+  int table_pos = INIT_VAL;
+  int pid = INIT_VAL;
+  pid = getpid();
+  table_pos = ProcTable_Insert(pid);
+  MboxProcTable[table_pos].status = BLOCKED;
+  MboxProcTable[table_pos].mbox_id = mbox_id;
+  BlkList_Insert(MboxProcTable[table_pos].pid);
+  block_me(11);
+}
