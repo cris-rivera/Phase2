@@ -541,9 +541,6 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   
   mail_box = &MailBoxTable[table_pos];
 
-  if(mail_box->m_slots->m_size > msg_size)
-    return -1;
-
   while(mail_box->m_slots == NULL)
   {
     pid = getpid();
@@ -556,6 +553,9 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     if(mail_box->status == RELEASED)
       return -3;
   }
+
+  if(mail_box->m_slots->m_size > msg_size)
+    return -1;
 
   current = mail_box->m_slots;
   memcpy(msg_ptr, current->message, msg_size);
