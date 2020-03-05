@@ -241,6 +241,8 @@ int MboxRelease(int mbox_id)
    */
   walker = current->m_slots;
 
+  if(walker != NULL)
+  {
   for(i = 0; i < MAXSLOTS; i++)
   {
     if(MSlot_Table[i].mbox_id == mbox_id)
@@ -251,6 +253,7 @@ int MboxRelease(int mbox_id)
       walker->status = EMPTY;
       walker = current->m_slots;
     }
+  }
   }
 
   /*
@@ -263,7 +266,7 @@ int MboxRelease(int mbox_id)
   current->slot_size = 0;
   current->status = RELEASED;
   
-  if(BlockedList != NULL)
+  while(BlockedList != NULL)
   {
     temp = BlockedList;
 
