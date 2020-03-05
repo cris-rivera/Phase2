@@ -526,7 +526,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   int i;
   int table_pos = INIT_VAL;
   int message_size = 0;
-  int pid = -1;
+  int pid = INIT_VAL;
   m_ptr mail_box = NULL;
   slot_ptr current = NULL;
 
@@ -568,6 +568,49 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 
   return message_size;
 } /* MboxReceive */
+
+int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size)
+{
+  check_kernel_mode("MboxCondReceive");
+
+  int i;
+  int table_pos = INIT_VAL;
+  int message_size = 0;
+  //int pid = INIT_VAL;
+  m_ptr mail_box = NULL;
+  slot_ptr current = NULL;
+
+  for(i = 0; i < MAXMBOX; i++)
+  {
+    if(mbox_id == MailBoxTable[i].mbox_id)
+      table_pos = i;
+  }
+
+  if(table_pos == INIT_VAL)
+    return -1;
+
+  mail_box = &MailBoxTable[table_pos];
+
+  if(mail_box->m_slots == NULL)
+    return -2;
+
+  if(mail_box->m_slots->m_size > msg_size)
+    return -1;
+
+  current = mail_box->m_slots;
+  memcpy(msg_ptr, current->message, msg_size);
+  message_size = current->m_size;
+  current->status = EMPTY;
+  Slot_Remove(mail_box);
+
+  if(BlockedList != NULL)
+    BlkList_Remove();
+
+  if(is_zapped())
+    return -3;
+  else
+    return message_size;
+}
 
 int ProcTable_Insert(int pid)
 {
