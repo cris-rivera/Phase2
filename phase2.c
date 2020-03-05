@@ -541,6 +541,9 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   
   mail_box = &MailBoxTable[table_pos];
 
+  if(mail_box->m_slots->m_size > msg_size)
+    return -1;
+
   while(mail_box->m_slots == NULL)
   {
     pid = getpid();
