@@ -193,7 +193,7 @@ int MboxCreate(int slots, int slot_size)
   int table_pos = next_mbox_id % MAXPROC;
   int mbox_id_count = 0;
 
-  if(slot_size < 0 || slot_size > MAX_MESSAGE)
+  if(slot_size < 0 || slot_size > MAX_MESSAGE || slots < 0)
     return -1;
 
   while(mbox_id_count < MAXMBOX && MailBoxTable[table_pos].mbox_id != INIT_VAL)
