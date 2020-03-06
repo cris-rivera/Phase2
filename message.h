@@ -1,5 +1,7 @@
 #define DEBUG2 1
 #define INIT_VAL -1
+#define TRUE 1
+#define FALSE 0
 
 typedef struct mbox_proc mbox_proc;
 typedef struct mail_slot *slot_ptr;
@@ -28,6 +30,7 @@ struct mailbox {
 struct mail_slot {
    int       status;
    int       mbox_id;
+   int       m_count; //holds the count number of the slot so the correct process receives the correct message.
    slot_ptr  next_slot;
    char      message[MAX_MESSAGE];
    int       m_size; //size of the message copied

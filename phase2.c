@@ -27,9 +27,11 @@ int MboxRelease(int mbox_id);
 int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size);
 int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size);
 int ProcTable_Insert(int pid);
+void Slot_Remove(m_ptr mailbox);
 void BlkList_Remove();
 void BlkList_Insert(int pid);
 void BlkList_Delete(int pid);
+void block_proc(int mbox_id);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -191,7 +193,7 @@ int MboxCreate(int slots, int slot_size)
   int table_pos = next_mbox_id % MAXPROC;
   int mbox_id_count = 0;
 
-  if(slot_size < 0 || slot_size > MAX_MESSAGE)
+  if(slot_size < 0 || slot_size > MAX_MESSAGE || slots < 0)
     return -1;
 
   while(mbox_id_count < MAXMBOX && MailBoxTable[table_pos].mbox_id != INIT_VAL)
@@ -239,6 +241,8 @@ int MboxRelease(int mbox_id)
    */
   walker = current->m_slots;
 
+  if(walker != NULL)
+  {
   for(i = 0; i < MAXSLOTS; i++)
   {
     if(MSlot_Table[i].mbox_id == mbox_id)
@@ -249,6 +253,7 @@ int MboxRelease(int mbox_id)
       walker->status = EMPTY;
       walker = current->m_slots;
     }
+  }
   }
 
   /*
@@ -261,7 +266,7 @@ int MboxRelease(int mbox_id)
   current->slot_size = 0;
   current->status = RELEASED;
   
-  if(BlockedList != NULL)
+  while(BlockedList != NULL)
   {
     temp = BlockedList;
 
@@ -292,10 +297,10 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   //Checks if calling process is in kernel mode then creates and initializes
   //temporary variables/pointers
   check_kernel_mode("MboxSend");
+
   int i;
   int table_pos = INIT_VAL;
   int proc_table_pos = INIT_VAL;
-  int mbox_status = CLOSED;
   int pid = INIT_VAL;
   int counter = 0;
   m_ptr current = NULL;
@@ -316,32 +321,64 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
 
   current = &MailBoxTable[table_pos];
+
+  /*
+   * finds an empty entry in the mail slot table and sets it as the new slot
+   * for the current mailbox. Also assigns this slot the counter value that
+   * will correspond with the current process.
+   */
+  for(i = 0; i < MAXSLOTS; i++)
+  {
+    if(MSlot_Table[i].status == EMPTY)
+    {
+      new_slot = &MSlot_Table[i];
+      i = MAXSLOTS;
+    }
+  }
+
+  if(new_slot == NULL)
+    console("basddddd\n");
   
   /*
    * Checks if mailbox is full. If mailbox slots are not full, selects next
    * empty mail slot to place message passed by msg_ptr. If mailbox slots are
    * full, blocks calling process until a free slot appears in the mailbox.
    */
-  while(mbox_status == CLOSED)
-  {
+
+    if(current->m_slots == NULL)
+    {
+      current->m_slots = new_slot;
+      current->m_slots->mbox_id = mbox_id;
+      memcpy(current->m_slots->message,msg_ptr, msg_size);
+      current->m_slots->m_size = msg_size;
+      current->m_slots->status = FULL;
+      current->m_slots->next_slot = NULL;
+    }
+    else
+    {
+      walker = MailBoxTable[table_pos].m_slots;
+
+      while(walker->next_slot != NULL)
+        walker = walker->next_slot;
+
+      walker->next_slot = new_slot;
+      walker = walker->next_slot;
+      walker->mbox_id = mbox_id;
+      memcpy(walker->message, msg_ptr, msg_size);
+      walker->m_size = msg_size;
+      walker->status = FULL;
+      walker->next_slot = NULL;
+    }
+
     walker = current->m_slots;
-    counter = 0;
 
     while(walker != NULL)
     {
-      if(walker->status == OPEN)
-      {
-        new_slot = walker;
-        walker = NULL;
-      }
-      else
-      {
-        walker = walker->next_slot;
-        counter++;
-      }
+      walker = walker->next_slot;
+      counter++;
     }
 
-    if(counter == current->num_slots)
+    if(counter > current->num_slots)
     {
       pid = getpid();
       proc_table_pos = ProcTable_Insert(pid);
@@ -353,63 +390,9 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
       if(current->status == RELEASED)
         return -3;
     }
-    else
-      mbox_status = OPEN;
-  }
 
-  /*
-   * Finds an empty entry in the mail slot table and sets it as the new slot of
-   * the current mailbox
-   */
-  if(new_slot == NULL)
-  {
-    for(i = 0; i < MAXSLOTS; i++)
-    {
-      if(MSlot_Table[i].status == EMPTY)
-      {
-        new_slot = &MSlot_Table[i];
-        i = MAXSLOTS;
-      }
-    }
-  }
-
-  /*
-   * Places message passed by msg_ptr into the next available empty mailslot.
-   */  
-  if(current->m_slots == NULL)
-  {
-    current->m_slots = new_slot;
-    current->m_slots->mbox_id = mbox_id;
-    memcpy(current->m_slots->message, msg_ptr, msg_size);
-    current->m_slots->m_size = msg_size;
-    current->m_slots->status = FULL;
-    current->m_slots->next_slot = NULL;
-
-    if(BlockedList != NULL)
-      BlkList_Remove();
-
-  }
-  else
-  {
-    walker = MailBoxTable[table_pos].m_slots;
-
-    for(i = 0; i < current->num_slots; i++)
-    {
-      if(walker->next_slot == NULL)
-      {
-        walker->next_slot = new_slot;
-        walker = walker->next_slot;
-        walker->mbox_id = mbox_id;
-        memcpy(walker->message, msg_ptr, msg_size);
-        walker->m_size = msg_size;
-        walker->status = FULL;
-        walker->next_slot = NULL;
-        i = current->num_slots;
-      }
-      else
-        walker = walker->next_slot;
-    }
-  }
+  if(BlockedList != NULL)
+    BlkList_Remove();
 
   return 0;
 } /* MboxSend */
@@ -543,12 +526,9 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   int i;
   int table_pos = INIT_VAL;
   int message_size = 0;
-  int pid = -1;
+  int pid = INIT_VAL;
   m_ptr mail_box = NULL;
   slot_ptr current = NULL;
-  slot_ptr walker = NULL;
-
-
 
   for(i = 0; i < MAXMBOX; i++)
   {
@@ -574,32 +554,63 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
       return -3;
   }
 
+  if(mail_box->m_slots->m_size > msg_size)
+    return -1;
+
   current = mail_box->m_slots;
   memcpy(msg_ptr, current->message, msg_size);
   message_size = current->m_size;
-  current->status = OPEN_SLOT;
-
-  /*
-   * have walker point to the last slot in the mailbox list.
-   */
-  walker = current;
-  while(walker->next_slot != NULL)
-    walker = walker->next_slot;
-
-  /*
-   * move mail slot that was just emptied to the end of the mailbox slot list.
-   */
-  walker->next_slot = current;
-  walker = current;
-  current = current->next_slot;
-  walker->next_slot = NULL;
-  mail_box->m_slots = current;
+  current->status = EMPTY;
+  Slot_Remove(mail_box);
 
   if(BlockedList != NULL)
     BlkList_Remove();
 
   return message_size;
 } /* MboxReceive */
+
+int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size)
+{
+  check_kernel_mode("MboxCondReceive");
+
+  int i;
+  int table_pos = INIT_VAL;
+  int message_size = 0;
+  //int pid = INIT_VAL;
+  m_ptr mail_box = NULL;
+  slot_ptr current = NULL;
+
+  for(i = 0; i < MAXMBOX; i++)
+  {
+    if(mbox_id == MailBoxTable[i].mbox_id)
+      table_pos = i;
+  }
+
+  if(table_pos == INIT_VAL)
+    return -1;
+
+  mail_box = &MailBoxTable[table_pos];
+
+  if(mail_box->m_slots == NULL)
+    return -2;
+
+  if(mail_box->m_slots->m_size > msg_size)
+    return -1;
+
+  current = mail_box->m_slots;
+  memcpy(msg_ptr, current->message, msg_size);
+  message_size = current->m_size;
+  current->status = EMPTY;
+  Slot_Remove(mail_box);
+
+  if(BlockedList != NULL)
+    BlkList_Remove();
+
+  if(is_zapped())
+    return -3;
+  else
+    return message_size;
+}
 
 int ProcTable_Insert(int pid)
 {
@@ -624,12 +635,40 @@ int ProcTable_Insert(int pid)
   return table_pos;
 }
 
+void Slot_Remove(m_ptr mailbox)
+{
+  slot_ptr previous, walker;
+  previous = NULL;
+  walker = mailbox->m_slots;
+
+  while(walker != NULL)
+  {
+    if(walker->status == EMPTY && previous == NULL)
+    {
+      previous = walker;
+      walker = walker->next_slot;
+      mailbox->m_slots = walker;
+      previous->next_slot = NULL;
+    }
+    else if(walker->status == EMPTY)
+    {
+      previous = walker->next_slot;
+      walker->next_slot = NULL;
+    }
+    else
+    {
+      previous = walker;
+      walker = walker->next_slot;
+    }
+  }
+}
 
 void BlkList_Remove()
 {
   mbox_proc_ptr proc_ptr = NULL;
   proc_ptr = BlockedList;
   BlockedList = BlockedList->next_mbox_ptr;
+  proc_ptr->next_mbox_ptr = NULL;
   proc_ptr->status = READY;
   unblock_proc(proc_ptr->pid);
 }
@@ -693,3 +732,15 @@ void BlkList_Delete(int pid)
      }
    }
 }/* BlkList_Delete */
+
+void block_proc(int mbox_id)
+{
+  int table_pos = INIT_VAL;
+  int pid = INIT_VAL;
+  pid = getpid();
+  table_pos = ProcTable_Insert(pid);
+  MboxProcTable[table_pos].status = BLOCKED;
+  MboxProcTable[table_pos].mbox_id = mbox_id;
+  BlkList_Insert(MboxProcTable[table_pos].pid);
+  block_me(11);
+}
