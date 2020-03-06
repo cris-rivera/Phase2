@@ -494,11 +494,13 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size)
   for(i = 0; i < MAXMBOX; i++)
   {
     if(mbox_id == MailBoxTable[i].mbox_id)
-      current = &MailBoxTable[i];
+      table_pos = i;
   }
 
-  if(current == NULL || msg_size > MailBoxTable[table_pos].slot_size || msg_size < 0)
+  if(table_pos == INIT_VAL || msg_size > MailBoxTable[table_pos].slot_size || msg_size < 0)
     return -1;
+
+  current = &MailBoxTable[table_pos];
 
   /*
    * Checks if mailbox is full. If mailbox slots are not full, selects next
@@ -522,7 +524,7 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size)
     }
   }
 
-  if(counter == current->num_slots)
+  if(counter >= current->num_slots)
     return -2;
 
   /*

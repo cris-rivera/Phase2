@@ -11,7 +11,7 @@ typedef struct mail_slot new_slot;
 typedef struct mailbox *m_ptr; //pointer to a mailbox
 
 struct mbox_proc {
-  short            pid;
+  int            pid;
   int              mbox_id; //to keep track of which mailbox caused the process  to block.
   int              status;
   mbox_proc_ptr    next_mbox_ptr; //used for BlockedList, I think.
