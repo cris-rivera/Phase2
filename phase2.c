@@ -196,7 +196,7 @@ int MboxCreate(int slots, int slot_size)
   /*
    * initializes local variables.
    */
-  int table_pos = next_mbox_id % MAXPROC;
+  int table_pos = next_mbox_id % MAXMBOX/*MAXPROC*/;
   int mbox_id_count = 0;
 
   /*
@@ -213,14 +213,14 @@ int MboxCreate(int slots, int slot_size)
   while(mbox_id_count < MAXMBOX && MailBoxTable[table_pos].mbox_id != INIT_VAL)
   {
     next_mbox_id++;
-    table_pos = next_mbox_id % MAXPROC;
+    table_pos = next_mbox_id % MAXMBOX;
     mbox_id_count++;
   }
 
   /*
    * Verifies a unique mailbox entry was found in the mailbox table.
    */
-  if(mbox_id_count >= MAXPROC)
+  if(mbox_id_count >= MAXMBOX/*MAXPROC*/)
     return -1;
 
   /*

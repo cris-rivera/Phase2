@@ -15,7 +15,7 @@ int start2(char *arg)
 
   printf("start2(): started, trying to create too many mailboxes...\n");
   /* 4+2+1 = 7, MAXMBOX-7,       10 - 7 = 3 (10-5= 5)*/
-  for (i = 1; i <= /*MAXMBOX - */5; i++) {
+  for (i = 1; i <= MAXMBOX -5; i++) {
     mbox_id = MboxCreate(10, 50);
     if (mbox_id < 0)
       printf("start2(): MailBoxCreate returned id less than zero, id = %d\n",
